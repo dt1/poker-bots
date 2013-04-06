@@ -234,7 +234,8 @@
         s-hand (straight hand)
         t-hand (trips hand)
         tp-hand (two-pair hand)
-        p-hand (pair hand)]
+        p-hand (pair hand)
+        h-hand (high-card hand)]
     (cond  (not (nil? sf-hand)) [sf-hand :straight-flush]
            (not (nil? q-hand)) [q-hand :quads]
            (not (nil? fh-hand)) [fh-hand :full-house]
@@ -242,7 +243,8 @@
            (not (nil? s-hand)) [s-hand :straight]
            (not (nil? t-hand)) [t-hand :trips]
            (not (nil? tp-hand)) [tp-hand :two-pair]
-           (not (nil? p-hand)) [p-hand :pair])))
+           (not (nil? p-hand)) [p-hand :pair]
+           :else [h-hand :high-card])))
 
 (defn bt-helper [player-strength bot-strength]
   (if (= player-strength bot-strength)
@@ -272,12 +274,14 @@
 (defn compare-hand-strength [player-hand bot-hand]
   (let [player-strength (get-hand-strength player-hand)
         bot-strength (get-hand-strength bot-hand)]
+    (println "Player has: " (last player-strength))
+    (println "Lizzie has: " (last bot-strength))
     (cond (> (.indexOf strengths (last player-strength)) (.indexOf strengths (last bot-strength)))
-          ((println "You win with: " (last player-strength))
-           (swap! game-state assoc :human (+ (:human @game-state) (:pot @game-state))))
+          ((swap! game-state assoc :human (+ (:human @game-state) (:pot @game-state)))
+           (play-game))
           (< (.indexOf strengths (last player-strength)) (.indexOf strengths (last bot-strength)))
-          ((println "Lizzie wins with: " (last bot-strength))
-           (swap! game-state assoc :bot (+ (:bot @game-state) (:pot @game-state))))     
+          ((swap! game-state assoc :bot (+ (:bot @game-state) (:pot @game-state)))
+           (play-game))     
           (= (.indexOf strengths (last player-strength)) (.indexOf strengths(last bot-strength)))
           (break-tie player-strength bot-strength))))
 
