@@ -1,0 +1,21 @@
+<!doctype html>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Play Lizzie</title>
+  </head>
+  <body>
+    <h1>Play Lizzie</h1>
+
+    <div id="cards"></div>
+
+
+    <div id="button-field"></div>
+    <div id="write-action"></div>
+
+
+    <script src="js/modern.js"></script>
+
+  </body>
+</html>

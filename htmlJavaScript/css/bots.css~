@@ -1,0 +1,58 @@
+.lizzie{
+//	position:absolute;
+	margin-left: 133px;
+	margin-top: -250px;
+}
+
+.table{
+//	position:absolute;
+	margin-top: 210px;
+	margin-left: -190px;
+	background-image: url('table.png');
+	background-repeat: no-repeat;
+	height:350px;
+	width:600px;
+	text-align:center;
+}
+
+.cards{
+	margin: -300px 0px 0px 240px;
+}
+
+.player-hand{
+    position: absolute;
+    /* width: 100px; */
+    /* height: 75px; */
+    padding: 5px;
+    background-color: black;
+    margin-top: -275px;
+    margin-left: 180px;
+}
+
+.player-hand span{
+	display:inline-block;
+	height:30px;
+	width:45px;
+	border: 1px solid grey;
+	background-color: white;
+	border-radius:5px;
+}
+
+.table span{
+	display:inline-block;
+	height:30px;
+	width:45px;
+	border: 1px solid grey;
+	background-color: white;
+	border-radius:5px;
+}
+
+.cards .pot{
+	width:auto;
+	padding: 0px 2px 0px 2px;
+}
+
+.cards .botbet{
+	width:auto;
+	padding: 0px 2px 0px 2px;
+}
