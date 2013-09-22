@@ -14,16 +14,6 @@
   (let [s (for [[x y] hand] y)]
     (frequencies s)))
 
-(defn find-suit [hand]
-  (for [[k v] (suit-frequency hand)]
-    (if (> v 1)
-      (sf-contender hand k))))
- 
-(defn sf-helper [hand]
-  (let [sf (suit-frequency hand)]
-    (let [a (filter #(>= 4 %) (vals sf))]
-      a)))
-
 (defn get-kickers [k-cards to-take]
   (take-last to-take
              (sort
@@ -105,7 +95,8 @@
       (if (and (= (take 4 t) [1 2 3 4])
                (= (last t) 13)
                (not (some #{6} t)))
-        (conj (take 4 t) (last t))
+        (conj (take 4 t) 
+              (last t))
         (loop [tt t]
           (when (> (count tt) 4)
             (if (= (- (last (take 5 tt)) (first (take 5 tt))) 4)

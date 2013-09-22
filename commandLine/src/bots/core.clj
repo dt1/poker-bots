@@ -7,45 +7,41 @@
 (declare play-game)
 (declare player-action)
 
-(defn bt-helper [player-kickers bot-kickers]
-  (cond (true? (first (map #(apply = %&) (sort player-kickers) (sort bot-kickers))))
-        (chop-pot)
+(defn break-tie [p-vals b-vals]
+  (if (or (empty? p-vals)
+          (empty? b-vals))
+    (do (println "Chop!")
+        (chop-pot))
+    
+    (cond (true? (= (first p-vals) (first b-vals)))
+              (break-tie (pop p-vals)
+                         (pop b-vals))
 
-        (true? (first (map #(apply > %&) (first (sort player-kickers)) (first (sort bot-kickers)))))
-        (pay-winner :human)
+          (true? (> (first p-vals) (first b-vals)))
+          (do (println "You Win!") 
+              (pay-winner :human))
 
-        (true? (first (map #(apply < %&) (first (sort player-kickers)) (first (sort bot-kickers)))))
-        (pay-winner :bot)))
-
-(defn break-tie [player-strength bot-strength]
-  (let [p-vals (first player-strength)
-        b-vals (first bot-strength)]
-    (println p-vals)
-    (println b-vals)
-    (cond (true? (first (map #(apply = %&) (sort (first p-vals)) (sort (first b-vals)))))
-          (bt-helper (rest p-vals) (rest b-vals))
-          
-          (true? (first (map #(apply > %&) (first (sort p-vals)) (first (sort b-vals)))))
-          (pay-winner :human)
-          
-          (true? (first (map #(apply < %&) (first p-vals) (first b-vals))))
-          (pay-winner :bot))))
+          (true? (< (first p-vals) (first b-vals)))
+          (do (println "Lizzie Wins!") 
+              (pay-winner :bot)))))
 
 (defn compare-hand-strength []
   (let [player-strength (get-hand-strength (player-final-hand))
         bot-strength (get-hand-strength (bot-final-hand))]
-    (cond (> (index-of strengths (last player-strength)) 
-             (index-of strengths (last bot-strength)))
-          (pay-winner :human)
-
-          (< (index-of strengths (last player-strength)) 
-             (index-of strengths (last bot-strength)))
-          (pay-winner :bot)
+    (let [p-index (index-of strengths (last player-strength))
+          b-index (index-of strengths (last bot-strength))]
+      (cond (> p-index b-index)
+            (do (println "You Win!")
+                (pay-winner :human))
+            
+            (< p-index b-index)
+            (do (println "Lizzie Wins!")
+                (pay-winner :bot))
           
-          (= (index-of strengths (last player-strength)) 
-             (index-of strengths(last bot-strength)))
-          (break-tie player-strength bot-strength))))
-
+            (= p-index b-index)
+            (break-tie (reverse (flatten (first player-strength))) 
+                       (reverse (flatten (first bot-strength))))))))
+  
 ;; player actions
 (defn check []
   (update-checks)
@@ -80,11 +76,9 @@
 
 (defn fold []
   (if (= (player-turn) :bot)
-    (swap! game-state assoc :human (+ (human-stack) 
-                                      (pot-size)))
-    (swap! game-state assoc :bot (+ (bot-stack) 
-                                    (pot-size))))
-  (play-game))
+    (pay-winner :bot)
+    (pay-winner :human))
+    (play-game))
 
 (defn bot-check-bet []
   (if (= (bot-moves) 1)
@@ -238,7 +232,7 @@
   (println "for" (get-hand-strength (bot-final-hand)))
   (println "Hero Shows" (player-final-hand))
   (println "for" (get-hand-strength (player-final-hand)))
-  (println (compare-hand-strength))
+  (compare-hand-strength)
   (play-game))
 
 (defn player-action []

@@ -3,7 +3,6 @@
             [goog.events :as event]
             [goog.dom :as gdom]))
 
-
 (declare play-game)
 (declare player-action)
 
@@ -42,22 +41,22 @@
             "1px solid black")
       (set! (.-style.margin card-span)
             "0px 2px 0px 2px")
-      (cond (= suit "S")
+      (cond (= suit "s")
             (do (set! (.-innerHTML card-span)
                       (str rank "&#9824;"))
                 (set! (.-style.color card-span)
                       "black"))
-            (= suit "H")
+            (= suit "h")
             (do (set! (.-innerHTML card-span)
                       (str rank "&#9829;"))
                 (set! (.-style.color card-span)
                       "red"))
-            (= suit "D")
+            (= suit "d")
             (do (set! (.-innerHTML card-span)
                       (str rank "&#9830;"))
                 (set! (.-style.color card-span)
                       "blue"))
-            (= suit "C")
+            (= suit "c")
             (do (set! (.-innerHTML card-span)
                       (str rank "&#9827;"))
                 (set! (.-style.color card-span)
@@ -94,7 +93,7 @@
 (defn bot-moves []
   (rand-int 2))
 
-(def suits ["H" "C" "S" "D"])
+(def suits ["h" "c" "s" "d"])
 (def ranks ["_" "2" "3" "4" "5" "6" "7" "8" "9" "T" "J" "Q" "K" "A"])
 
 (def deck (set (for [x ranks
@@ -108,8 +107,6 @@
 
 (def streets {:pre-flop 2 :flop 2 :turn 4 :river 4 :showdown 0})
 (def street-order [:pre-flop :flop :turn :river :showdown])
-
-(def max-bets 8)
 
 (def strengths [
                 :high-card 
@@ -125,99 +122,61 @@
 (def max-checks 2)
 (def max-bets 8)
 
-(def game-state (atom {:human 100000
-                       :bot 100000
-                       :pot 0
-                       :bets 0
-                       :checks 0
-                       :player-turn :human
-                       :street :flop
-                       :facing-bet? false
-                       :call? false}))
+;; bets
 
-(defn human-stack []
-  (:human @game-state))
-
-(defn bot-stack []
-  (:bot @game-state))
-
-(defn pot-size []
-  (:pot @game-state))
-
-(defn bets []
-  (:bets @game-state))
-
-(defn checks []
-  (:checks @game-state))
-
-(defn player-turn []
-  (:player-turn @game-state))
-
-(defn street []
-  (:street @game-state))
-
-(defn facing-bet? []
-  (:facing-bet? @game-state))
-
-(defn player-call? []
-  (:call? @game-state))
-
-(defn switch-player []
-  (if (= (@game-state :player-turn) :human)
-    (swap! game-state assoc :player-turn :bot)
-    (do (swap! game-state assoc :player-turn :human)
-        (set! (.-border "hero-info")
-              "3px solid blue"))))
-
-(defn update-facing-bet [bool]
-  (swap! game-state assoc :facing-bet? bool))
-
-(defn update-call [bool]
-  (swap! game-state assoc :call? bool))
-
-(defn update-pot [amt]
-  (swap! game-state assoc :pot (+ (pot-size) 
-                                  (* amt 
-                                     ((street) streets)))))
-
-(defn pot-to-zero []
-  (swap! game-state assoc :pot 0))
-
-(defn checks-to-zero []
-  (swap! game-state assoc :checks 0))
-
-(defn update-player-stack [amt]
-  (swap! game-state assoc (player-turn) (- ((player-turn) @game-state) 
-                                           (* amt 
-                                              ((street) streets)))))
-
-(defn update-street []
-  (swap! game-state assoc :street (nth street-order (+ (index-of street-order (street)) 
-                                                       1))))
-
-(defn reset-street []
-  (swap! game-state assoc :street :pre-flop))
-
-(defn update-checks []
-  (swap! game-state assoc :checks (inc (checks))))
+(def bet-count (atom 0))
 
 (defn update-bets []
-  (swap! game-state assoc :bets (inc (bets))))
+  (swap! bet-count inc))
 
-(defn get-stack [player]
-  (if (= player :human)
-    (human-stack)
-    (bot-stack)))
+(defn bets-to-zero []
+  (reset! bet-count 0))
 
-(defn pay-winner [player]
-  (swap! game-state assoc player (+ (get-stack player)
-                                    (pot-size))))
+(defn bets [] @bet-count)
 
-(defn chop-pot []
-  ((swap! game-state assoc :human (+ (human-stack) 
-                                     (/ (pot-size) 2))) 
-   (swap! game-state assoc :bot (+ (bot-stack) 
-                                   (/ (pot-size) 2)))))
+;; checks
+
+(def check-count (atom 0))
+
+(defn update-checks []
+  (swap! check-count inc))
+
+(defn checks-to-zero []
+  (reset! check-count 0))
+
+(defn checks [] @check-count)
+
+;; streets
+
+(def current-street (atom :pre-flop))
+
+(defn street [] @current-street)
+
+(defn update-street []
+  (reset! current-street (nth street-order (+ (index-of street-order (street)) 
+                                              1))))
+
+(defn reset-street []
+  (reset! current-street :pre-flop))
+
+
+;; count calls
+
+(def call? (atom false))
+
+(defn update-call [bool]
+  (reset! call? bool))
+
+(defn player-call? [] @call?)
+
+;; facing bet? 
+
+(def face-bet? (atom false))
+
+(defn update-facing-bet [bool]
+  (reset! face-bet? bool))
+
+(defn facing-bet? [] @face-bet?)
 
 (def stub (atom deck))
 
@@ -261,20 +220,102 @@
 (defn bot-final-hand []
   (concat @bot-hand @flop @turn @river))
 
+;; player turns
+
 (def position (atom {:button :human
                      :oop :bot}))
+
+(def p-turn (atom :human))
+
+(defn player-turn [] @p-turn)
+
+(defn oop-player [player]
+  (reset! p-turn player))
+
+(defn switch-player []
+  (if (= (player-turn) :human)
+    (reset! p-turn :bot)
+    (reset! p-turn :human)))
 
 (defn switch-pos []
   (let [new-button (:oop @position)
         new-oop (:button @position)]
     (swap! position assoc :oop new-oop)
-    (swap! position assoc :button new-button)))
+    (swap! position assoc :button new-button)
+    (oop-player new-oop)))
 
 (defn sb-player []
-  (:button @position))
+  (:oop @position))
 
 (defn bb-player []
-  (:oop @position))
+  (:button @position))
+
+(defn coerce-button-turn []
+  (reset! p-turn (bb-player)))
+
+(defn coerce-oop-turn []
+  (reset! p-turn (sb-player)))
+
+(defn dealer-button []
+  (let [btn (.createElement js/document "p")]
+    (set! (.-innerHTML btn)
+          "D")))
+
+(defn move-dealer-button []
+  (if (= (bb-player) :bot)
+    (do (remove-children "player-button")
+        (inner-html "bot-button" (dealer-button)))
+    (do (remove-children "bot-button")
+        (inner-html "player-button" "D"))))
+
+;; pot
+
+(def pot (atom 0))
+
+(defn pot-size [] @pot)
+
+(defn pot-to-zero []
+  (reset! pot 0))
+
+(defn update-pot [amt]
+  (let [n (* amt ((street) streets))]
+    (swap! pot + n)))
+
+;; human-stack
+
+(def human-stack-size (atom 100000))
+
+(defn human-stack [] @human-stack-size)
+
+;; bot-stack
+
+(def bot-stack-size (atom 100000))
+
+(defn bot-stack [] @bot-stack-size)
+
+;; stacks
+
+
+(defn update-player-stack [amt]
+  (let [n (* amt ((street) streets))]
+    (if (= (player-turn) :human)
+      (swap! human-stack-size - n)
+      (swap! bot-stack-size - n))))
+
+(defn get-stack [player]
+  (if (= player :human)
+    (human-stack)
+    (bot-stack)))
+
+(defn pay-winner [player]
+  (if (= player :human)
+    (swap! human-stack-size + (pot-size))
+    (swap! bot-stack-size + (pot-size))))
+
+(defn chop-pot []
+  (let [n (/ (pot-size) 2)]
+    ((swap! human-stack-size + n)
+     (swap! bot-stack-size + n))))
 
 (defn rank-count [hand-ranks qty]
   (for [[kk vv] hand-ranks
@@ -336,7 +377,7 @@
   (let [q-cards (rank-count (rank-frequency hand) 4)
         k-cards (rank-count (rank-frequency hand) 1)]
     (if (not (empty? q-cards))
-      (conj (map #(index-of ranks %) q-cards)
+     (conj (map #(index-of ranks %) q-cards)
             (get-kickers k-cards 1)))))
 
 (defn full-house [hand]
@@ -464,11 +505,12 @@
 (defn call []
   (update-pot 1)
   (update-player-stack 1)
-  (update-street)
+  (bets-to-zero)
   (checks-to-zero)
   (update-facing-bet false)
   (update-call true)
-  (switch-player)
+  (coerce-oop-turn)
+  (update-street)
   (player-action))
 
 (defn bet []
@@ -495,16 +537,16 @@
 
 (defn bot-check-bet []
   (if (= (bot-moves) 1)
-    (do (inner-html "bot-action" "Lizzie Checks") 
+    (do (inner-html "bot-action" "Check") 
         (check))
-    (do (inner-html "bot-action" "Lizzie Bets") 
+    (do (inner-html "bot-action" "Bet") 
         (bet))))
 
 (defn bot-raise-call []
   (if (= (bot-moves) 0) 
-    (do (inner-html "bot-action" "Lizzie Calls") 
+    (do (inner-html "bot-action" "Call") 
         (call))
-    (do (inner-html "bot-action" "Lizzie Raises") 
+    (do (inner-html "bot-action" "Raise") 
         (raise))))
 
 (defn crf-click-event [actions]
@@ -554,27 +596,30 @@
 
 (defn call-fold []
   (if (= (player-turn) :bot)
-    (do (inner-html "bot-action" "Lizzie Calls")
+    (do (inner-html "bot-action" "Calls")
         (call)))
-  (cf-buttons)
-  (cf-click-event cf))
+  (do
+    (cf-buttons)
+    (cf-click-event cf)))
 
-;; preflop setup
 (defn post-sb []
-  (swap! game-state assoc (sb-player) (- ((sb-player) @game-state) 
-                                         (:small-blind blinds))))
+  (let [n (:small-blind blinds)]
+    (if (= (sb-player) :human)
+      (swap! human-stack-size - n)
+      (swap! bot-stack-size - n))))
 
 (defn post-bb []
-  (swap! game-state assoc (bb-player) (- ((bb-player) @game-state) 
-                                         (:big-blind blinds))))
+  (let [n (:big-blind blinds)]
+    (if (= (bb-player) :human)
+      (swap! human-stack-size - n)
+      (swap! bot-stack-size - n))))
 
 (defn post-blinds []
-  (inner-html "dealer-talk" (str (bb-player) " posts Big Blind"))
-  (inner-html "dealer-talk" (str (sb-player) " posts Small Blind"))
-  (post-sb) 
-  (post-bb)
-  (swap! game-state assoc :pot (+ (:big-blind blinds) 
-                                  (:small-blind blinds))))
+    (inner-html "dealer-talk" (str (bb-player) " posts Big Blind"))
+    (inner-html "dealer-talk" (str (sb-player) " posts Small Blind"))
+    (post-sb) 
+    (post-bb)
+    (swap! pot + (+ (:big-blind blinds) (:small-blind blinds))))
 
 ;; small-blind moves
 (defn pf-call []
@@ -604,16 +649,15 @@
                          (fold)))))
 
 (defn sb-action []
-  (cond (= (sb-player) :bot)
-        (if (= (bot-moves) 0) 
-          (do (inner-html "bot-action" "Lizzie Calls") 
-              (pf-call))
-          (do (inner-html "bot-action" "Lizzie Raises") 
-              (pf-raise)))
+  (if (= (player-turn) :bot)
+    (if (= (bot-moves) 0) 
+      (do (inner-html "bot-action" "Call") 
+          (pf-call))
+      (do (inner-html "bot-action" "Raise") 
+          (pf-raise)))
 
-        (= (sb-player) :human)
-        (do (crf-buttons)
-            (sb-click-event crf))))
+  (do (crf-buttons)
+      (sb-click-event crf))))
 
 (defn get-board []
   (cond (= (street) :flop)
@@ -632,10 +676,7 @@
   (inner-html "pot" (str "$" (pot-size)))
   (inner-html "bot-stack" (str "$" (bot-stack)))
   (inner-html "player-stack" (str "$" (human-stack)))
-  (inner-html "street" (str (street)))
-  (inner-html "bot-stack" (str "$" (bot-stack)))
-  (inner-html "player-stack" (str "$" (human-stack)))
-  )
+  (inner-html "street" (str (street))))
 
 (defn showdown []
   (inner-html "bot-action" "")
@@ -661,19 +702,20 @@
              (false? (facing-bet?))
              (= (checks) 0))
         (sb-action)
-
-        (and (= (street) :pre-flop)
-             (false? (facing-bet?))
+        
+        (and (false? (facing-bet?))
              (= (checks) 1))
         (check-bet)
         
         (false? (facing-bet?))
         (if (= (checks) max-checks)
-          (do (update-street)
+          (do (coerce-oop-turn)
+              (bets-to-zero)
+              (update-street)
               (display-info)
               (check-bet))
           (check-bet))
-
+        
         (true? (facing-bet?))
         (if (< (bets) max-bets)
           (raise-call-fold)
@@ -681,7 +723,10 @@
         
         (= (checks) max-checks)
         (do (update-street)
+            (bets-to-zero)
             (update-facing-bet false)
+            (checks-to-zero)
+            (coerce-oop-turn)
             (display-info)
             (check-bet)))
 
@@ -690,11 +735,13 @@
 (defn player-action []
   (js/setTimeout #(act) 200))
 
+
 (defn play-game []
   (inner-html "bot-cards" "")
   (inner-html "cards" "")
   (reset-deck)
   (switch-pos)
+  (coerce-oop-turn)
   (reset! player-hand (create-hands))
   (reset! flop (deal-flop))
   (reset! turn (deal-turn))
@@ -703,6 +750,7 @@
   (show-cards "player-cards" @player-hand)
   (reset-street)
   (pot-to-zero)
+  (move-dealer-button)
   (post-blinds)
   (player-action))
 
