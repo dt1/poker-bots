@@ -1,5 +1,5 @@
 (ns bots.core
-  (:require [clojure.set :as cset])
+  (:require [bots.dealer :as dealer])
   (:use [bots.gameSetup]
         [bots.botStrat]
         [bots.handStrength]))
@@ -10,7 +10,7 @@
 (defn break-tie [p-vals b-vals]
   (if (or (empty? p-vals)
           (empty? b-vals))
-    (do (println "Chop!")
+    (do (dealer/lizzy-wins)
         (chop-pot))
     
     (cond (true? (= (first p-vals) (first b-vals)))
@@ -18,11 +18,11 @@
                          (pop b-vals))
 
           (true? (> (first p-vals) (first b-vals)))
-          (do (println "You Win!") 
+          (do (dealer/player-wins) 
               (pay-winner :human))
 
           (true? (< (first p-vals) (first b-vals)))
-          (do (println "Lizzie Wins!") 
+          (do (dealer/lizzy-wins) 
               (pay-winner :bot)))))
 
 (defn compare-hand-strength []
@@ -31,11 +31,11 @@
     (let [p-index (index-of strengths (last player-strength))
           b-index (index-of strengths (last bot-strength))]
       (cond (> p-index b-index)
-            (do (println "You Win!")
+            (do (dealer/player-wins)
                 (pay-winner :human))
             
             (< p-index b-index)
-            (do (println "Lizzie Wins!")
+            (do (dealer/lizzy-wins)
                 (pay-winner :bot))
           
             (= p-index b-index)
@@ -82,22 +82,22 @@
 
 (defn bot-check-bet []
   (if (= (bot-moves) 1)
-    (do (println "Lizzie Checks") 
+    (do (dealer/lizzie-checks) 
         (check))
-    (do (println "Lizzie Bets") 
+    (do (dealer/lizzie-bets) 
         (bet))))
 
 (defn bot-raise-call []
   (if (= (bot-moves) 0) 
-    (do (println "Lizzie Calls") 
+    (do (dealer/lizzie-calls) 
         (call))
-    (do (println "Lizzie Raises") 
+   (do (dealer/lizzie-raises)
         (raise))))
 
 (defn raise-call-fold []
   (if (= (player-turn) :bot)
     (bot-raise-call))
-  (println "Call, Raise, or Fold")
+  (dealer/call-raise-fold)
   (let [action (read-line)]
     (cond (= action "c")
           (call)
@@ -112,7 +112,7 @@
 (defn check-bet []
   (if (= (player-turn) :bot)
     (bot-check-bet))
-  (println "Check or Bet")
+  (dealer/check-bet)
   (let [action (read-line)]
     (cond (= action "c")
           (check)
@@ -123,9 +123,9 @@
 
 (defn call-fold []
   (if (= (player-turn) :bot)
-    (do (println "Lizzie Calls")
+    (do (dealer/lizzie-calls)
         (call)))
-  (println "Call or Fold")
+  (dealer/call-fold)
   (let [action (read-line)]
     (cond (= action "c")
           (call)
@@ -167,12 +167,12 @@
 
 (defn sb-action []
   (if (= (sb-player) :bot)
-    (if (= (bot-moves) 0) 
-      (do (println "Lizzie Calls") 
+    (if (= (bot-moves) 0)
+      (do (dealer/lizzie-calls)
           (pf-call))
-      (do (println "Lizzie Raises") 
+      (do (dealer/lizzie-raises)
           (pf-raise))))
-  (println "Call, Raise, or Fold")
+  (dealer/call-raise-fold)
   (let [action (read-line)]
     (cond (= action "c")
           (pf-call)
@@ -181,7 +181,7 @@
           (pf-raise)
           (= action "f")
           (fold)
-          :else 
+          :else
           (sb-action))))
 
 (defn format-cards [cards]
@@ -189,19 +189,28 @@
     (fn [c] (apply format "%s%s" c))
     cards))
 
+;; display board
+(defmulti display-street :street)
+
+(defmethod display-street :flop [_]
+  (println "flop" (format-cards @flop)))
+
+(defmethod display-street :turn [_]
+  (println "turn" (format-cards (concat @flop @turn))))
+
+(defmethod display-street :river [_]
+  (println "river" (format-cards (concat @flop @turn @river))))
+
+(defmethod display-street :showdown [_]
+  (println "showdown" (format-cards (concat @flop @turn @river))))
+
+(defmethod display-street :default [_]
+  (println "preflop"))
 
 (defn get-board []
-  (cond (= (street) :flop)
-        (println "flop" (format-cards@flop))
+  (display-street {:street (street)}))
 
-        (= (street) :turn)
-        (println "turn" (format-cards (concat @flop @turn)))
-        
-        (or (= (street) :river)
-            (= (street) :showdown))
-        (println "river" (format-cards (concat @flop @turn @river)))
-        
-        :else (println "preflop")))
+;; / display board
 
 (defn print-hands []
   (println "Lizzie: " (bot-stack))
