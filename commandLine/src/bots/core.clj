@@ -10,7 +10,7 @@
 (defn break-tie [p-vals b-vals]
   (if (or (empty? p-vals)
           (empty? b-vals))
-    (do (dealer/lizzy-wins)
+    (do (dealer/chop)
         (chop-pot))
     
     (cond (true? (= (first p-vals) (first b-vals)))
@@ -94,32 +94,50 @@
    (do (dealer/lizzie-raises)
         (raise))))
 
+(defmulti crf :action)
+
+(defmethod crf "c" [_]
+  (call))
+
+(defmethod crf "r" [_]
+  (raise))
+
+(defmethod crf "f" [_]
+  (fold))
+
 (defn raise-call-fold []
   (if (= (player-turn) :bot)
     (bot-raise-call))
   (dealer/call-raise-fold)
   (let [action (read-line)]
-    (cond (= action "c")
-          (call)
-          (or (= action "b")
-              (= action "r"))
-          (raise)
-          (= action "f")
-          (fold)
-          :else
-          (raise-call-fold))))
+    (if (some #{action} ["c" "r" "f"])
+      (crf {:action action})
+      (raise-call-fold))))
+
+(defmulti cb :action)
+
+(defmethod cb "c" [_]
+  (check))
+
+(defmethod cb "b" [_]
+  (bet))
 
 (defn check-bet []
   (if (= (player-turn) :bot)
     (bot-check-bet))
   (dealer/check-bet)
   (let [action (read-line)]
-    (cond (= action "c")
-          (check)
-          (= action "b")
-          (bet)
-          :else
-          (check-bet))))
+    (if (some #{action} ["c" "b"])
+      (cb {:action action})
+      (check-bet))))
+
+(defmulti cf :action)
+
+(defmethod cf "c" [_]
+  (call))
+
+(defmethod cf "f" [_]
+  (fold))
 
 (defn call-fold []
   (if (= (player-turn) :bot)
@@ -127,12 +145,9 @@
         (call)))
   (dealer/call-fold)
   (let [action (read-line)]
-    (cond (= action "c")
-          (call)
-          (= action "f")
-          (fold)
-          :else 
-          (call-fold))))
+    (if (some #{action} ["c" "f"])
+      (cf {:action action})
+      (call-fold))))
 
 ;; preflop setup
 (defn post-sb []
@@ -151,20 +166,26 @@
   (swap! game-state assoc :pot (+ (:big-blind blinds) (:small-blind blinds))))
 
 ;; small-blind moves
-(defn pf-call []
+
+(defmulti sb-crf :action)
+
+(defmethod sb-crf "c" [_]
   (update-pot 0.5)
   (update-player-stack 0.5)
   (update-checks)
   (switch-player)
   (player-action))
 
-(defn pf-raise []
+(defmethod sb-crf "r" [_]
   (update-pot 1.5)
   (update-player-stack 1.5)
   (switch-player)
   (update-facing-bet true)
   (player-action))
 
+(defmethod sb-crf "f" [_]
+  (fold))
+  
 (defn sb-action []
   (if (= (sb-player) :bot)
     (if (= (bot-moves) 0)
@@ -174,14 +195,8 @@
           (pf-raise))))
   (dealer/call-raise-fold)
   (let [action (read-line)]
-    (cond (= action "c")
-          (pf-call)
-          (or (= action "b")
-              (= action "r"))
-          (pf-raise)
-          (= action "f")
-          (fold)
-          :else
+    (if (some #{action} ["c" "r" "f"])
+      (sb-crf {:action action})
           (sb-action))))
 
 (defn format-cards [cards]

@@ -39,7 +39,6 @@
 (defmethod chat :default [_]
   (println ""))
 
-
 (defn chat-map [x]
   (chat {:chat x}))
 
@@ -73,4 +72,3 @@
 
 (defn lizzie-checks []
 	 (chat-map :lizzie-checks))
-
