@@ -2,7 +2,8 @@
   (:require [bots.dealer :as dealer])
   (:use [bots.gameSetup]
         [bots.botStrat]
-        [bots.handStrength]))
+        [bots.handStrength]
+        [bots.tests]))
 
 (declare play-game)
 (declare player-action)
@@ -190,9 +191,9 @@
   (if (= (sb-player) :bot)
     (if (= (bot-moves) 0)
       (do (dealer/lizzie-calls)
-          (pf-call))
+          (sb-crf {:action "c"}))
       (do (dealer/lizzie-raises)
-          (pf-raise))))
+          (sb-crf {:action "r"}))))
   (dealer/call-raise-fold)
   (let [action (read-line)]
     (if (some #{action} ["c" "r" "f"])

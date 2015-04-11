@@ -6,75 +6,78 @@
         :when (= vv qty)]
     kk))
 
+(defn desc [m]
+  (reverse (sort (vals m))))
+
 (defn rank-frequency [hand]
-  (let [r (for [[x y] hand] x)]
-    (frequencies r)))
+  (frequencies (map first hand)))
 
 (defn suit-frequency [hand]
-  (let [s (for [[x y] hand] y)]
-    (frequencies s)))
+  (frequencies (map second hand)))
+
+(defn get-ranks-strength [hand-map]
+  (map #(index-of ranks %) hand-map))
 
 (defn get-kickers [k-cards to-take]
   (take-last to-take
              (sort
-              (map #(index-of ranks %) k-cards))))
+              (get-ranks-strength k-cards))))
 
-(defn high-card [hand]
-  (let [h-hand (rank-count (rank-frequency hand) 1)]
-    (let [h2 (sort (map #(index-of ranks %) h-hand))]
-      (conj
-       (take-last 1 h2)
-       (take 4
-             (get-kickers h-hand 5))))))
+(defn compare-kickers [k1 k2]
+  (let [kk1 (first k1)
+        kk2 (last k2)]
+    (if (>= kk1 kk2)
+      (list kk1)
+      (list kk2))))
 
-(defn pair [hand]
-  (let [p-card (rank-count (rank-frequency hand) 2)
-        k-cards (rank-count (rank-frequency hand) 1)]
-    (if (not (empty? p-card))
-      (conj (map #(index-of ranks %) p-card)
-            (get-kickers k-cards 3)))))
+(defn ranks-strength-count [hand-map cnt]
+  (get-ranks-strength (rank-count hand-map cnt)))
 
-(defn two-pair [hand]
-  (let [p-cards (rank-count (rank-frequency hand) 2)
-        k-cards (rank-count (rank-frequency hand) 1)]
-    (if (not (empty? p-cards))
-      (cond (= (count p-cards) 2)
-            (conj (map #(index-of ranks %) p-cards)
-                  (get-kickers k-cards 1))
-            (= (count p-cards) 3)
-            (conj (take-last 2 (sort (map #(index-of ranks %) p-cards)))
-                  (let [kicker (get-kickers k-cards 1)
-                        other-kicker (take 1 (sort (map #(index-of ranks %) p-cards)))]
-                    (if (>= (first kicker) (first other-kicker))
-                      kicker
-                      other-kicker)))))))
+(defn sorted-ranks-strength-count [hand-map cnt]
+  (sort (ranks-strength-count hand-map cnt)))
+  
 
-(defn trips [hand]
-  (let [t-cards (rank-count (rank-frequency hand) 3)
-        k-cards (concat (rank-count (rank-frequency hand) 1)
-                        (rank-count (rank-frequency hand) 2))]
-    (if (not (empty? t-cards))
-      (conj (map #(index-of ranks %) t-cards)
-            (get-kickers k-cards 2)))))
+(defn high-card [hand-map]
+  (let [h-hand (sorted-ranks-strength-count hand-map 1)]
+    (conj
+     (take-last 1 h-hand)
+     (take-last 4 (drop-last h-hand)))))
 
-(defn quads [hand]
-  (let [q-cards (rank-count (rank-frequency hand) 4)
-        k-cards (rank-count (rank-frequency hand) 1)]
-    (if (not (empty? q-cards))
-      (conj (map #(index-of ranks %) q-cards)
-            (get-kickers k-cards 1)))))
+(defn pair [hand-map]
+  (let [p-card (ranks-strength-count hand-map 2)
+        k-cards (sorted-ranks-strength-count hand-map 1)]
+    (conj p-card (take-last 3 k-cards))))
 
-(defn full-house [hand]
-  (let [t-cards (rank-count (rank-frequency hand) 3)
-        p-cards (rank-count (rank-frequency hand) 2)]
-    (if (not (empty? t-cards))
-      (cond (= (count t-cards) 2)
-            (conj (take-last 1 (sort (map #(index-of ranks %) t-cards)))
-                  (take 1 (sort (map #(index-of ranks %) t-cards))))
-            :else
-            (if (not (empty? p-cards))
-              (conj (map #(index-of ranks %) t-cards)
-                    (take-last 1 (sort (map #(index-of ranks %) p-cards)))))))))
+(defn two-pair [hand-map]
+  (let [p-cards (sorted-ranks-strength-count hand-map 2)
+        k-cards (sorted-ranks-strength-count hand-map 1)]
+    (if (= (count p-cards) 2)
+      (conj p-cards (take-last 1 k-cards))
+      (conj (take-last 2 p-cards)
+            (compare-kickers p-cards k-cards)))))
+
+(defn trips [hand-map]
+  (let [t-cards (ranks-strength-count hand-map 3)
+        k-cards (sorted-ranks-strength-count hand-map 1)]
+    (conj t-cards
+          (take-last 2 k-cards))))
+
+(defn quads [hand-map]
+  (let [q-cards (ranks-strength-count hand-map 4)
+        k-cards (sort (concat (ranks-strength-count hand-map 1)
+                              (ranks-strength-count hand-map 2)
+                              (ranks-strength-count hand-map 3)))]
+    (conj q-cards
+          (take-last 1 k-cards))))
+
+(defn full-house [hand-map]
+  (let [t-cards (sorted-ranks-strength-count hand-map 3)
+        p-cards (sorted-ranks-strength-count hand-map 2)]
+    (if (= (count t-cards) 2)
+          (conj (take-last 1 t-cards)
+                (take 1 t-cards))
+          (conj t-cards
+                (take-last 1 p-cards)))))
 
 (defn is-flush [hand]
   (let [a (suit-frequency hand)]
@@ -87,24 +90,26 @@
         (let [ss (for [[x y] hand]
                    (if (= y tt)
                      x))]
-          (sort (map #(index-of ranks %) ss)))))))
+          (sort (get-ranks-strength ss)))))))
 
-(defn straight [hand]
-  (let [hf (keys (rank-frequency hand))]
-    (let [t (sort (set (map #(index-of ranks %) hf)))]
-      (if (and (= (take 4 t) [1 2 3 4])
-               (= (last t) 13)
-               (not (some #{6} t)))
-        (conj (take 4 t) 
-              (last t))
-        (loop [tt t]
-          (when (> (count tt) 4)
-            (if (= (- (last (take 5 tt)) (first (take 5 tt))) 4)
+(defn straight [hand-map]
+  (let [t (sort (set (get-ranks-strength (keys hand-map))))]
+    (println t)
+    (if (and (= (take 4 t) [1 2 3 4])
+             (= (last t) 13)
+             (not (some #{6} t)))
+      (conj (take 4 t) 
+            (last t))
+      (loop [tt t]
+        (when (> (count tt) 4)
+          (let [s5 (take 5 tt)]
+            (if (= (- (last s5) (first s5)) 4)
               (loop [res tt]
-                (if (= (- (last (take-last 5 res)) (first (take-last 5 res))) 4)
-                  (take-last 5 res)
-                  (recur (take (- (count res) 1) res))))
-              (recur (rest tt)))))))))
+                (let [r5 (take-last 5 res)]
+                  (if (= (- (last r5) (first r5)) 4)
+                    r5
+                    (recur (drop-last res)))))
+                (recur (rest tt)))))))))
 
 (defn sf-helper [hand suit]
   (remove nil? (for [[x y] hand]
@@ -125,7 +130,58 @@
           (>= (count s-hand) 5)
           (straight s-hand))))
 
+(defmulti disperse-hand :s)
+
+;; quads
+(defmethod disperse-hand '(4 1 1 1) [m]
+  (quads (:h m)))
+
+(defmethod disperse-hand '(4 2 1) [m]
+  (quads (:h m)))
+
+(defmethod disperse-hand '(4 3) [m]
+  (quads (:h m)))
+
+;; full house
+(defmethod disperse-hand '(3 2 1 1) [m]
+  (full-house (:h m)))
+
+(defmethod disperse-hand '(3 2 2) [m]
+  (full-house (:h m)))
+
+(defmethod disperse-hand '(3 3 1) [m]
+  (full-house (:h m)))
+
+;; trips ; straigtht ; flush
+(defmethod disperse-hand '(3 1 1 1 1) [_]
+  (println "3k ; st ; fl"))
+
+;; two pair ; straight ; flush
+(defmethod disperse-hand '(2 2 1 1 1) [_]
+  (println "2p ; st ; fl"))
+
+;; two pair
+(defmethod disperse-hand '(2 2 2 1) [m]
+  (two-pair (:h m)))
+
+;; pair ; straight ; flush
+(defmethod disperse-hand '(2 1 1 1 1 1) [m]
+  (pair (:h m)))
+
+;; high card ; straight ; flush
+(defmethod disperse-hand '(1 1 1 1 1 1 1) [_]
+  (println "high card ; st ; fl"))
+
+(defmethod disperse-hand '(5 1 1) [_]
+  (println "flush"))
+
+(defn make-frequency-maps [hand]
+  (let [rf-hand (rank-frequency hand)
+        desc-seq (desc rf-hand)]
+    (disperse-hand {:s desc-seq :h rf-hand})))
+
 (defn get-hand-strength [hand]
+  (prn hand)
   (let [sf-hand (straight-flush hand)
         q-hand (quads hand)
         fh-hand (full-house hand)
